@@ -1,0 +1,15 @@
+{
+	"name": "better-ignore-user",
+	"description": "Better ignore features",
+	"author": "pytness",
+	"version": "1.0",
+
+	"requiredModules": ["jquery-lib"],
+
+	"matches": [
+		"/",
+		"/foro/forumdisplay.php*",
+		"/foro/showthread.php*",
+		"/foro/profile.php?do=ignorelist"
+	]
+}

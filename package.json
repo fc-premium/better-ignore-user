@@ -1,0 +1,26 @@
+{
+  "name": "better-ignore-user",
+  "version": "1.0.0",
+  "description": "Better ignore user",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fc-premium/icon-autocomplete.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fc-premium/icon-autocomplete/issues"
+  },
+  "homepage": "https://github.com/fc-premium/icon-autocomplete#readme",
+  "dependencies": {
+    "@types/jquery": "^3.5.0",
+    "fc-premium-core": "file:../../fc-premium-core",
+    "terser-webpack-plugin": "^3.0.6",
+    "webpack": "^4.43.0"
+  }
+}

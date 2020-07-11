@@ -1,0 +1,31 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"lib": ["dom", "es2019"],
+		"outDir": "./out",
+		"moduleResolution": "node",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": false,
+		"removeComments": true,
+		"resolveJsonModule": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"watch": true,
+		"incremental": false,
+		"noResolve": false,
+
+		"baseUrl": ".",
+		"paths": {
+      			"@assets/*": ["assets/*"],
+			"@fc-lib/*": [""],
+    		}
+	},
+
+	"include": [
+		"./src/**/*.*"
+	],
+
+	"files": [
+		"./src/index.ts"
+	]
+}

@@ -1,0 +1,22 @@
+{
+	"force-update": {
+		"type": "boolean",
+		"title": "Force update",
+		"description": "Always check for new ignored users",
+		"default": false
+	},
+
+	"hide-posts": {
+		"type": "boolean",
+		"title": "Hide posts",
+		"description": "Hides the posts instead of showing a message",
+		"default": false
+	},
+
+	"hide-color": {
+		"type": "color",
+		"title": "Hide posts",
+		"description": "Hides the posts instead of showing a message",
+		"default": "#000000"
+	}
+}
