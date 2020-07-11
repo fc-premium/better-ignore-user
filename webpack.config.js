@@ -15,12 +15,12 @@ module.exports = {
 	mode: 'production',
 
 	optimization: {
-		minimize: false,
+		minimize: true,
 		minimizer: [
 			new TerserPlugin({
+				extractComments: false,
 				terserOptions: {
 					compress: {
-						// module: true,
 						ecma: 2017,
 						negate_iife: false,
 						unsafe: true,
@@ -30,6 +30,7 @@ module.exports = {
 
 					output: {
 						ecma: 2017,
+						comments: false
 					}
 				}
 			})
