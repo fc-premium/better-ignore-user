@@ -4,8 +4,6 @@
 	"author": "pytness",
 	"version": "1.0",
 
-	"requiredModules": ["jquery-lib"],
-
 	"matches": [
 		"/",
 		"/foro/forumdisplay.php*",

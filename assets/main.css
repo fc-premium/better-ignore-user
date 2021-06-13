@@ -1,0 +1,11 @@
+#ignorelist_add_form
+.userlist_form_controls
+input.button.tm {
+	margin-left: 5px;
+}
+
+#ignorelist_add_form
+.userlist_form_controls
+#importProgress {
+	float: right;
+}

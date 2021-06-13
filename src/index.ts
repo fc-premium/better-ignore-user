@@ -1,9 +1,9 @@
 import { Core, FC } from 'fc-premium-core'
-import $ from '@fc-lib/jquery'
+// import $ from '@fc-lib/jquery'
 
 import ModuleInfo from "@assets/info.json";
 import ModuleConfig from "@assets/config.json";
-
+import ModuleStyles from '@assets/main.css'
 
 const BetterIgnoreUser = new Core.Module(ModuleInfo);
 
@@ -12,28 +12,27 @@ const URL_SEARCH = location.search;
 
 const DEFAULT_FILENAME = 'ignoredusers.export';
 
-function getAjax(url) {
+function get_sync_ajax(url: string | URL) {
 	let ajax = new XMLHttpRequest();
-	ajax.open('GET', url, false);
+	ajax.open('GET', <string>url, false);
 	ajax.send();
 
 	return ajax.responseText;
 }
 
 
-function parseIgnoredListHtml(html) {
+function parse_ignored_users_html(html: string) {
 
-	html = FC.Utils.parseHTML(html);
+	const doc = FC.Utils.parseHTML(html);
 
-	let li_list = $(html)
-		.find('.userlist.floatcontainer')
-		.find<HTMLAnchorElement>('li > a');
+	const li_list = doc.querySelectorAll<HTMLAnchorElement>('.userlist.floatcontainer li > a')
+	const iu_list = {};
 
-	let iu_list = {};
+	li_list.forEach(element => {
+		const url = new URL(element.href);
 
-	li_list.each((i, el) => {
-		let uid = parseInt(el.href.split('=').slice(-1)[0]);
-		let uname = el.innerText
+		const uid = parseInt(url.searchParams.get('u'));
+		const uname = element.innerText
 			.trim().toLowerCase();
 
 		iu_list[uid] = uname;
@@ -42,16 +41,16 @@ function parseIgnoredListHtml(html) {
 	return iu_list;
 }
 
-function getIgnoredUsersIdList() {
+function get_ignored_users_list() {
 
-	let iu_list = BetterIgnoreUser.storage.get('ignored-users-list');
 	const do_update = BetterIgnoreUser.storage.get('update-needed') || BetterIgnoreUser.config.get('force-update');
+	let iu_list = BetterIgnoreUser.storage.get('ignored-users-list');
 
 	if (do_update || Object.keys(iu_list).length === 0) {
 		BetterIgnoreUser.debug.log('Updating iu list');
-		let response = getAjax(FC.Urls.ignoreList);
 
-		iu_list = parseIgnoredListHtml(response);
+		const response = get_sync_ajax(FC.Urls.ignoreList);
+		iu_list = parse_ignored_users_html(response);
 
 		BetterIgnoreUser.storage.set('ignored-users-list', iu_list);
 		BetterIgnoreUser.storage.set('update-needed', false);
@@ -60,160 +59,179 @@ function getIgnoredUsersIdList() {
 	return iu_list;
 }
 
-function safehtml(html) {
+function safe_html(html: string): string {
 	return html.replace('<', '&lt;')
 		.replace('>', '&gt;');
 }
 
-const elementExists = selector =>
-	$(selector).length !== 0;
+function element_exists(selector: string): boolean {
+	return document.querySelector(selector) !== null
+}
 
-function exportUserList() {
+function export_user_list() {
 
-	// Get checked users
-	let inputs = $<HTMLInputElement>('#ignorelist input[type="checkbox"]').toArray()
-		.filter((input: HTMLInputElement) =>
-			input.checked
-		);
+	const checked_inputs = Array.from(
+		document.querySelectorAll<HTMLInputElement>('#ignorelist input[type="checkbox"]')
+	)
+		.filter((input) => input.checked);
 
-	// exit if no users selected
-	if (inputs.length === 0)
+
+	if (checked_inputs.length === 0)
 		return false;
 
-	let ignoredUsers = {};
+	const ignored_users = {};
 
-	inputs.forEach(input => {
-		let user_id = input.value;
+	checked_inputs.forEach(input => {
+		const user_id = input.value;
 		let username = input.parentElement
 			.innerText.trim();
+
 		username = encodeURIComponent(username);
 
-		ignoredUsers[user_id] = username;
+		ignored_users[user_id] = username;
 	});
 
-	let b64json = btoa(JSON.stringify(ignoredUsers));
+	const encoded_json = btoa(JSON.stringify(ignored_users));
 
-	let filename = prompt('Nombre del archivo:', DEFAULT_FILENAME);
+	const filename = prompt('Nombre del archivo:', DEFAULT_FILENAME);
 
 
-	// Exit if no filename introduced
 	if (filename === null || filename === '')
 		return false;
 
-	let blob = new Blob([b64json], {
+	const blob = new Blob([encoded_json], {
 		type: "text/plain;charset=utf-8"
 	});
 
-	let blobLink = URL.createObjectURL(blob);
+	const blob_link = URL.createObjectURL(blob);
 
-	let downloadLink = $('<a>')
-		.attr('target', '_blank')
-		.attr('download', filename)
-		.attr('href', blobLink);
 
-	downloadLink.hide();
+	const download_link = document.createElement('a');
 
-	$('html > head').append(downloadLink);
+	download_link.setAttribute('target', '_blank')
+	download_link.setAttribute('download', filename)
+	download_link.setAttribute('href', blob_link)
+	download_link.style.display = 'none';
 
-	downloadLink[0].click();
-	downloadLink.remove();
+	document.head.append(download_link)
+
+	download_link.click();
+	download_link.remove();
 
 	window.addEventListener('unload', function() {
-		URL.revokeObjectURL(blobLink);
+		URL.revokeObjectURL(blob_link);
 	});
 }
 
-function updateUserList(uid, uname) {
-	let ul = $('#ignorelist');
+function update_user_list(uid: string, uname: string) {
+	let ul = document.getElementById('ignorelist');
 
-	if (ul.length === 0) {
-		$('<ul class="userlist floatcontainer" id="ignorelist">')
-			.insertBefore($('#ignorelist_change_form .submitrow.smallfont'));
-		ul = $('#ignorelist');
+	if (ul === null) {
+		ul = document.createElement('ul');
+		ul.setAttribute('class', 'userlist floatcontainer');
+		ul.setAttribute('id', 'ignorelist');
+
+		const submit_row = document.querySelector('#ignorelist_change_form .submitrow.smallfont');
+
+		submit_row.before(ul);
+
+		// $('<ul class="userlist floatcontainer" id="ignorelist">')
+		// 	.insertBefore($('#ignorelist_change_form .submitrow.smallfont'));
 	}
 
 	// Create and sort checkboxes if not exists
-	if (!elementExists(`#user${uid}`)) {
-		let li_list = $<HTMLLIElement>('#ignorelist li').toArray();
+	if (!element_exists(`#user${uid}`)) {
+		const li_list = Array.from(document.querySelectorAll<HTMLLIElement>('#ignorelist li'));
 
-		let li = <HTMLLIElement>(() => {
-			let li = $(`<li id="user${uid}">`);
+		const li = <HTMLLIElement>(() => {
 
-			let checkbox = $('<input type="checkbox" />')
-				.attr('name', `listbits[ignore][${uid}]`)
-				.attr('id', `usercheck_${uid}`)
-				.attr('value', uid)
-				.attr('checked', 'checked');
+			const li = document.createElement('li');
+			li.setAttribute('id', `user${uid}`)
 
-			let anchor = $(`<a href="member.php?u=${uid}">${uname}</a>`);
+			const checkbox = document.createElement('input');
+			checkbox.setAttribute('type', 'checkbox');
 
-			let hidden = $('<input type="hidden" />')
-				.attr('name', `listbits[ignore_original][${uid}]`)
-				.attr('value', uid);
+			checkbox.setAttribute('name', `listbits[ignore][${uid}]`);
+			checkbox.setAttribute('id', `usercheck_${uid}`);
+			checkbox.setAttribute('value', uid);
+			checkbox.setAttribute('checked', 'checked');
+
+
+			const anchor = document.createElement('a');
+			anchor.setAttribute('href', `member.php?u=${uid}`);
+			anchor.innerText = uname;
+
+
+			const hidden_input = document.createElement('input');
+			hidden_input.setAttribute('type', 'hidden');
+			hidden_input.setAttribute('name', `listbits[ignore_original][${uid}]`)
+			hidden_input.setAttribute('value', uid);
 
 			li.append(checkbox);
 			li.append(anchor);
-			li.append(hidden);
+			li.append(hidden_input);
 
-			return li[0];
+			return li;
 		})();
 
-		// li_list = li_list.toArray();
 		li_list.push(li);
 
 		li_list.sort((a, b) => {
-			let a_uname = $(a).find('a').text();
-			let b_uname = $(b).find('a').text();
+			const a_uname = a.innerText.trim();
+			const b_uname = b.innerText.trim();
 
 			return a_uname.localeCompare(b_uname);
 		});
 
-		ul.empty();
+		while (ul.firstChild !== null)
+			ul.removeChild(ul.firstChild);
+
 		li_list.forEach(el => ul.append(el));
 	}
 }
 
-function importUserList() {
+function import_user_list() {
 
-	let fileinput = $<HTMLInputElement>('<input type="file">');
+	const file_input = document.createElement('input');
+	file_input.setAttribute('type', 'file');
 
-	fileinput.on('change', function() {
-		let file = this.files[0];
 
-		let reader = new FileReader();
+	file_input.addEventListener('change', function() {
 
-		reader.onload = function() {
-			let json = FC.Utils.jsonSafeParse(atob(<string>reader.result));
+		const file = file_input.files[0];
+		const reader = new FileReader();
+
+		reader.addEventListener('onload', function() {
+			const json = FC.Utils.jsonSafeParse(atob(<string>reader.result));
 
 			if (json === undefined)
 				return alert('ERR_MALFORMED_CONTENT');
 
+			const valid_users = [];
 
-			let validUsers = [];
-
-			Object.keys(json).forEach(key => {
-				if (elementExists(`#user${key}`))
+			Object.entries(json).forEach(([id, username]: [string, string]) => {
+				if (element_exists(`#user${id}`))
 					return;
 
-				validUsers.push([key, decodeURIComponent(json[key])]);
+				valid_users.push([id, decodeURIComponent(username)]);
 			});
 
-			if (validUsers.length === 0)
+			if (valid_users.length === 0)
 				return;
 
-			validUsers.sort((a, b) =>
+			valid_users.sort((a, b) =>
 				a[1].localeCompare(b[1])
 			);
 
-			let progress = $('#importProgress');
-			progress.text(`0 / ${validUsers.length}`);
-			progress.show();
+			const progress = document.getElementById('importProgress');
+			progress.innerText = `0 / ${valid_users.length}`;
+			progress.style.display = '';
 
 			let completedRequests = 0;
 
-			validUsers.forEach(([uid, uname]) => {
-				const formData = new FormData($<HTMLFormElement>('#ignorelist_add_form')[0]);
-				formData.set('username', uname);
+			valid_users.forEach(([user_id, username]) => {
+				const formData = new FormData(<HTMLFormElement>document.getElementById('ignorelist_add_form'));
+				formData.set('username', username);
 
 				const formDataList: Array<[string, string]> = Array.from(<[string, string][]><unknown>formData);
 				let dataString = '';
@@ -224,10 +242,10 @@ function importUserList() {
 
 				dataString = dataString.slice(0, -1);
 
-				let form = $('#ignorelist_change_form');
-				form.show();
+				// const form = document.getElementById('ignorelist_change_form');
+				// form.show();
 
-				let ajax = new XMLHttpRequest();
+				const ajax = new XMLHttpRequest();
 
 				ajax.open('POST', 'profile.php?do=updatelist&userlist=ignore', true);
 				ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -235,21 +253,27 @@ function importUserList() {
 				ajax.onreadystatechange = function() {
 					if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
 
-						progress.text(`(${uname}) ${++completedRequests} / ${validUsers.length}`);
-						updateUserList(uid, uname);
+						completedRequests += 1;
 
-						if (completedRequests === validUsers.length) {
+						progress.innerText = `(${username}) ${completedRequests} / ${valid_users.length}`;
+						update_user_list(user_id, username);
 
-							$<HTMLInputElement>('#ignorelist_checkall').change(function() {
+
+						if (completedRequests === valid_users.length) {
+
+							const checkall_input = <HTMLInputElement>document.getElementById('ignorelist_checkall');
+
+							checkall_input.addEventListener('change', function() {
 								let state = this.checked;
 								let checkboxes = $<HTMLInputElement>('input[type="checkbox"]')
 									.toArray();
 								checkboxes.forEach(el => {
 									el.checked = state;
 								});
+
 							});
 
-							setTimeout(() => progress.hide(), 1000);
+							setTimeout(() => progress.style.display = 'none', 1000);
 						}
 					}
 				};
@@ -257,60 +281,65 @@ function importUserList() {
 				ajax.send(dataString);
 			});
 
-		};
+		});
 
 		reader.readAsText(file);
 		this.remove();
 	});
 
-	fileinput[0].click();
+	file_input.click();
 }
 
-function insertCss() {
-	// BetterIgnoreUser.styles.set('input.button.tm', {
-	// 	'margin-left': '5px'
-	// })
-	// 	.set('#importProgress', {
-	// 		'float': 'right'
-	// 	});
-}
+function insert_buttons() {
 
-function insertButtons() {
+	const submit = document.querySelector('.userlist_form_controls input[type="submit"]');
 
-	const submit = $('.userlist_form_controls input[type="submit"]');
-	const exportButton = $('<input type="button" class="button tm" value="Exportar"> ');
-	const importButton = $('<input type="button" class="button tm" value="Importar"> ');
-	const progress = $('<span id="importProgress"></span>');
+	// const exportButton = $('<input type="button" class="button tm" value="Exportar"> ');
+	const export_button = document.createElement('input');
+	export_button.setAttribute('type', 'button');
+	export_button.setAttribute('class', 'button tm');
+	export_button.setAttribute('value', 'Exportar');
 
-	exportButton.on('click', exportUserList);
-	importButton.on('click', importUserList);
+	const import_button = document.createElement('input');
+	import_button.setAttribute('type', 'button');
+	import_button.setAttribute('class', 'button tm');
+	import_button.setAttribute('value', 'Importar');
 
-	progress.insertAfter(submit);
-	importButton.insertAfter(submit);
-	exportButton.insertAfter(submit);
+	const progress = document.createElement('span');
+	progress.setAttribute('id', 'importProgress');
 
-	progress.hide();
+
+	export_button.addEventListener('click', export_user_list);
+	import_button.addEventListener('click', import_user_list);
+
+
+	submit.after(progress);
+	submit.after(import_button);
+	submit.after(export_button);
+
+	progress.style.display = 'none';
 }
 
 function setThreadVisibilityFromRoot(show = false) {
 
 	BetterIgnoreUser.debug.log('setThreadVisibilityFromRoot');
 
-	const USER_ID_LIST = Object.entries(getIgnoredUsersIdList())
+	const USER_ID_LIST = Object.entries(get_ignored_users_list())
 		.map(a => parseInt(a[0]));
 
-	const authors = $<HTMLAnchorElement>('.cajasnews a[href*="/foro/member"]');
+	const authors = document.querySelectorAll<HTMLAnchorElement>('.cajasnews a[href*="/foro/member"]');
 
-	authors.each((i, author) => {
-		const uid = parseInt(author.href.split('=').slice(-1)[0]);
+	authors.forEach(author => {
+		const author_url = new URL(author.href);
+		const uid = parseInt(author_url.searchParams.get('u'));
 
 		if (USER_ID_LIST.includes(uid)) {
-			const parent = $(author).parent().parent();
+			const parent = <HTMLElement>author.parentNode.parentNode;
 
 			if (show)
-				parent.show();
+				parent.style.display = '';
 			else
-				parent.hide();
+				parent.style.display = 'none';
 		}
 	});
 }
@@ -319,146 +348,129 @@ function setThreadVisibilityFromForumdisplay(show = false) {
 
 	BetterIgnoreUser.debug.log('setThreadVisibilityFromForumdisplay');
 
-	const USER_ID_LIST = Object.entries(getIgnoredUsersIdList())
-		.map(a => parseInt(a[0]));
+	const USER_ID_LIST = new Set(Object.keys(get_ignored_users_list()));
 
+	const authors = document.querySelectorAll('[id*=threadbits_forum] span[onclick]');
 
-	const authors = $('[id*=threadbits_forum] span[onclick]');
+	authors.forEach(author => {
+		const user_id = author.getAttribute('onclick')
+			.split('=', 2)[1]
+			.split("'")[0];
 
-	authors.each((i, author) => {
-		let uid_str = $(author).attr('onclick').split('=', 2)[1];
-		const uid: number = parseInt(uid_str.split("'")[0]);
-
-		if (USER_ID_LIST.includes(uid)) {
-			const parent = $(author).parent().parent().parent();
+		if (USER_ID_LIST.has(user_id)) {
+			const parent = <HTMLElement>author.parentNode
+				.parentNode.parentNode;
 
 			if (show)
-				parent.show();
+				parent.style.display = '';
 			else
-				parent.hide();
+				parent.style.display = 'none';
 		}
 	});
 }
 
 // refactorize this
-function setPostVisibility(show = false) {
+function setPostVisibility(show = false, hide_ignored_posts = false) {
 
 	BetterIgnoreUser.debug.log('setPostVisibility');
 
-	const iu_list = Object.entries(getIgnoredUsersIdList());
+	const QUOTE_AUTHORS_SELECTOR = FC.Utils.isMobileVersion ?
+		'div > strong + a[href*="showthread.php?p="]' :
+		'td.alt2 > div > b + a[href*="showthread.php?p="]';
 
-	const USER_ID_LIST = iu_list.map(a => parseInt(a[0]));
-	const USERNAME_LIST = iu_list.map(a => a[1]);
+	const POST_AUTHORS_SELECTOR = FC.Utils.isMobileVersion ?
+		'a.ui-link:not(.fpostuseravatarlink)' :
+		'div[id^=postmenu] a.bigusername';
 
-	const quoteAuthors = $(FC.Utils.isMobileVersion ?
-		'div > strong:has(+a[href*="showthread.php?p="] > img)' :
-		'td.alt2 > div > b:has(+a[href*="showthread.php?p="] > img)'
-	);
+	const POST_ELEMENTS_SELECTOR = FC.Utils.isMobileVersion ?
+		'div#posts > ul' :
+		'#posts > div[align="center"]';
 
+	const iu_list = get_ignored_users_list();
 
-	const postAuthors = $<HTMLAnchorElement>(FC.Utils.isMobileVersion ?
-		'.ui-link:not(.fpostuseravatarlink)' :
-		'div[align="center"] div.smallfont + a'
-	);
-
-	BetterIgnoreUser.debug.log('do hide', postAuthors, quoteAuthors, USERNAME_LIST, USER_ID_LIST);
-
-	// Hide ignored users posts
-	postAuthors.each((i, authorLink) => {
-		const user_id = parseInt(authorLink.href.split('=')[1]);
-
-		if (USER_ID_LIST.includes(user_id)) {
-
-			const element = $(authorLink).closest(FC.Utils.isMobileVersion ?
-				'ul' : 'div[align="center"]');
-
-			BetterIgnoreUser.debug.log(`Ignored user post detected from ${authorLink.innerText} with id: ${user_id}`);
+	const USER_ID_SET = new Set(Object.keys(iu_list));
+	const USERNAME_SET = new Set(Object.values<string>(iu_list));
 
 
-			if (show)
-				element.show();
-			else
-				element.hide();
-		}
-	});
+	if (hide_ignored_posts) {
 
-	// Delete ignored users quotes
-	quoteAuthors.each((i, author) => {
+		const post_authors = Array.from(document.querySelectorAll<HTMLAnchorElement>(POST_AUTHORS_SELECTOR));
+		const post_elements = Array.from(document.querySelectorAll<HTMLElement>(POST_ELEMENTS_SELECTOR));
 
-		// get rid of possible xss
-		let uname = author.innerText;
-		const lowerUname = uname.trim().toLowerCase();
+		post_authors.forEach((author_link, i) => {
+			const author_url = new URL(author_link.href);
+			const user_id = author_url.searchParams.get('u');
 
-		// get rid of possible xss
+			if (USER_ID_SET.has(user_id)) {
 
-		if (USERNAME_LIST.includes(lowerUname)) {
-			BetterIgnoreUser.debug.log(`Ignored user quote detected from ${uname}`);
+				BetterIgnoreUser.debug.log(`Ignored user post detected from ${author_link.innerText} with id: ${user_id}`);
 
-			const element = $(author).closest(FC.Utils.isMobileVersion ?
-				'ul' : 'div[align="center"]');
+				const element = post_elements[i];
 
-			if (show)
-				element.show();
-			else
-				element.hide();
-		}
-	});
+				if (show)
+					element.style.display = '';
+				else
+					element.style.display = 'none';
+			}
+		});
+	}
 
-	// Just replace text
-	quoteAuthors.each((i, author) => {
+	const quote_authors = Array.from(document.querySelectorAll(QUOTE_AUTHORS_SELECTOR))
+		.map(element =>
+			<HTMLElement>element.previousElementSibling
+		);
 
-		// get rid of possible xss
-		let uname = author.innerText;
-		const lowerUname = uname.trim().toLowerCase();
+	quote_authors.forEach(author => {
 
-		// get rid of possible xss
+		const username = author.innerText;
+		const lower_usernname = username.trim().toLowerCase();
 
-		if (USERNAME_LIST.includes(lowerUname)) {
-			let td = author.parentElement.parentElement;
-			let text = td.lastElementChild;
+		if (USERNAME_SET.has(lower_usernname)) {
 
-			uname = safehtml(uname);
+			const td = author.parentElement.parentElement;
+			const text = td.lastElementChild;
+
+			const safe_username = safe_html(username);
 
 			text.innerHTML = '<br>Este mensaje está oculto porque ' +
-				`<b>${uname}</b> está en tu ` +
+				`<b>${safe_username}</b> está en tu ` +
 				`<a href="${FC.Urls.ignoreList}" target="_blank">` +
 				'lista de ignorados</a>';
 		}
 	});
-
 }
 
 BetterIgnoreUser.onload = function() {
 
-	const storageKeyMissing: boolean = !(BetterIgnoreUser.storage.has('ignored-users-list')
-		&& BetterIgnoreUser.storage.has('update-needed'));
+	const storage_key_missing = !(
+		BetterIgnoreUser.storage.has('ignored-users-list') &&
+		BetterIgnoreUser.storage.has('update-needed')
+	);
 
-	if (storageKeyMissing === true) {
+	if (storage_key_missing === true) {
 		BetterIgnoreUser.storage.set('ignored-users-list', []);
 		BetterIgnoreUser.storage.set('update-needed', true);
 	};
 
 	if (PATH === FC.Urls.ignoreList.pathname && URL_SEARCH === FC.Urls.ignoreList.search) {
 		BetterIgnoreUser.storage.set('update-needed', true);
-		BetterIgnoreUser.debug.log('Hitted ignored list url, update on next module load');
+		BetterIgnoreUser.debug.log('Hitted ignored list url, update on next module load!!');
 
-		window.addEventListener('load', function() {
-			insertCss();
-			insertButtons();
-		});
+		insert_buttons();
 
 	} else {
+		const hide_posts = BetterIgnoreUser.config.get('hide-posts');
 		switch (PATH) {
 			case FC.Urls.absolutePath.pathname:
-				setThreadVisibilityFromRoot();
+				setThreadVisibilityFromRoot(false);
 				break;
 
 			case FC.Urls.forumDisplay.pathname:
-				setThreadVisibilityFromForumdisplay();
+				setThreadVisibilityFromForumdisplay(false);
 				break;
 
 			case FC.Urls.showThread.pathname:
-				setPostVisibility(!BetterIgnoreUser.config.get('hide-posts'))
+				setPostVisibility(false, hide_posts)
 				break;
 			default:
 				break;
@@ -488,5 +500,6 @@ export {
 	BetterIgnoreUser as module,
 	ModuleConfig as config,
 	ModuleInfo as info,
-	// ModuleStyles as css
+	ModuleStyles as css
+
 };

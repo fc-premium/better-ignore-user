@@ -1,5 +1,4 @@
-/// <reference types="jquery" />
-declare module '@fc-lib/jquery' {
-	var _: JQueryStatic;
-	export default _;
+declare module '*.css' {
+	const value: string;
+	export = value;
 }
