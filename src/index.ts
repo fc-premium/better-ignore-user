@@ -1,5 +1,6 @@
 import { Core, FC } from 'fc-premium-core'
-// import $ from '@fc-lib/jquery'
+
+import { get_sync_ajax, safe_html, element_exists } from './tools'
 
 import ModuleInfo from "@assets/info.json";
 import ModuleConfig from "@assets/config.json";
@@ -11,14 +12,6 @@ const PATH = location.pathname;
 const URL_SEARCH = location.search;
 
 const DEFAULT_FILENAME = 'ignoredusers.export';
-
-function get_sync_ajax(url: string | URL) {
-	let ajax = new XMLHttpRequest();
-	ajax.open('GET', <string>url, false);
-	ajax.send();
-
-	return ajax.responseText;
-}
 
 
 function parse_ignored_users_html(html: string) {
@@ -57,15 +50,6 @@ function get_ignored_users_list() {
 	}
 
 	return iu_list;
-}
-
-function safe_html(html: string): string {
-	return html.replace('<', '&lt;')
-		.replace('>', '&gt;');
-}
-
-function element_exists(selector: string): boolean {
-	return document.querySelector(selector) !== null
 }
 
 function export_user_list() {
@@ -118,7 +102,7 @@ function export_user_list() {
 	download_link.click();
 	download_link.remove();
 
-	window.addEventListener('unload', function() {
+	window.addEventListener('unload', function () {
 		URL.revokeObjectURL(blob_link);
 	});
 }
@@ -195,13 +179,12 @@ function import_user_list() {
 	const file_input = document.createElement('input');
 	file_input.setAttribute('type', 'file');
 
-
-	file_input.addEventListener('change', function() {
+	file_input.addEventListener('change', function () {
 
 		const file = file_input.files[0];
 		const reader = new FileReader();
 
-		reader.addEventListener('onload', function() {
+		reader.addEventListener('onload', function () {
 			const json = FC.Utils.jsonSafeParse(atob(<string>reader.result));
 
 			if (json === undefined)
@@ -250,7 +233,7 @@ function import_user_list() {
 				ajax.open('POST', 'profile.php?do=updatelist&userlist=ignore', true);
 				ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-				ajax.onreadystatechange = function() {
+				ajax.onreadystatechange = function () {
 					if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
 
 						completedRequests += 1;
@@ -263,7 +246,7 @@ function import_user_list() {
 
 							const checkall_input = <HTMLInputElement>document.getElementById('ignorelist_checkall');
 
-							checkall_input.addEventListener('change', function() {
+							checkall_input.addEventListener('change', function () {
 								let state = this.checked;
 								let checkboxes = $<HTMLInputElement>('input[type="checkbox"]')
 									.toArray();
@@ -440,7 +423,7 @@ function setPostVisibility(show = false, hide_ignored_posts = false) {
 	});
 }
 
-BetterIgnoreUser.onload = function() {
+BetterIgnoreUser.addEventListener('load', function () {
 
 	const storage_key_missing = !(
 		BetterIgnoreUser.storage.has('ignored-users-list') &&
@@ -476,9 +459,9 @@ BetterIgnoreUser.onload = function() {
 				break;
 		}
 	}
-}
+})
 
-BetterIgnoreUser.onunload = function() {
+BetterIgnoreUser.addEventListener('unload', function () {
 	switch (PATH) {
 		case FC.Urls.absolutePath.pathname:
 			setThreadVisibilityFromRoot(true);
@@ -494,7 +477,7 @@ BetterIgnoreUser.onunload = function() {
 		default:
 			break;
 	}
-}
+})
 
 export {
 	BetterIgnoreUser as module,
