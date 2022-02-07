@@ -19,7 +19,9 @@
   "homepage": "https://github.com/fc-premium/icon-autocomplete#readme",
   "dependencies": {
     "@types/jquery": "^3.5.0",
-    "fc-premium-core": "file:../../fc-premium-core",
+    "fc-premium-core": "file:../fc-premium-core",
+    "json-loader": "^0.5.7",
+    "raw-loader": "^4.0.2",
     "terser-webpack-plugin": "^3.0.6",
     "webpack": "^4.43.0"
   }

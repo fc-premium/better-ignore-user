@@ -1,6 +1,6 @@
 import { Core, FC } from 'fc-premium-core'
 
-import { get_sync_ajax, safe_html, element_exists } from './tools'
+import { parse_ignored_users_html, safe_html, element_exists } from './tools'
 
 import ModuleInfo from "@assets/info.json";
 import ModuleConfig from "@assets/config.json";
@@ -10,31 +10,11 @@ const BetterIgnoreUser = new Core.Module(ModuleInfo);
 
 const PATH = location.pathname;
 const URL_SEARCH = location.search;
+const URL_SEARCH_PARAMS = new URLSearchParams(URL_SEARCH);
 
 const DEFAULT_FILENAME = 'ignoredusers.export';
 
-
-function parse_ignored_users_html(html: string) {
-
-	const doc = FC.Utils.parseHTML(html);
-
-	const li_list = doc.querySelectorAll<HTMLAnchorElement>('.userlist.floatcontainer li > a')
-	const iu_list = {};
-
-	li_list.forEach(element => {
-		const url = new URL(element.href);
-
-		const uid = parseInt(url.searchParams.get('u'));
-		const uname = element.innerText
-			.trim().toLowerCase();
-
-		iu_list[uid] = uname;
-	});
-
-	return iu_list;
-}
-
-function get_ignored_users_list() {
+async function get_ignored_users_list() {
 
 	const do_update = BetterIgnoreUser.storage.get('update-needed') || BetterIgnoreUser.config.get('force-update');
 	let iu_list = BetterIgnoreUser.storage.get('ignored-users-list');
@@ -42,8 +22,10 @@ function get_ignored_users_list() {
 	if (do_update || Object.keys(iu_list).length === 0) {
 		BetterIgnoreUser.debug.log('Updating iu list');
 
-		const response = get_sync_ajax(FC.Urls.ignoreList);
-		iu_list = parse_ignored_users_html(response);
+		const response_html = await fetch(FC.Urls.ignoreList.toString())
+			.then(response => response.text());
+
+		iu_list = parse_ignored_users_html(response_html);
 
 		BetterIgnoreUser.storage.set('ignored-users-list', iu_list);
 		BetterIgnoreUser.storage.set('update-needed', false);
@@ -127,7 +109,7 @@ function update_user_list(uid: string, uname: string) {
 	if (!element_exists(`#user${uid}`)) {
 		const li_list = Array.from(document.querySelectorAll<HTMLLIElement>('#ignorelist li'));
 
-		const li = <HTMLLIElement>(() => {
+		const li = (() => {
 
 			const li = document.createElement('li');
 			li.setAttribute('id', `user${uid}`)
@@ -303,11 +285,13 @@ function insert_buttons() {
 	progress.style.display = 'none';
 }
 
-function setThreadVisibilityFromRoot(show = false) {
+async function setThreadVisibilityFromRoot(show = false) {
 
 	BetterIgnoreUser.debug.log('setThreadVisibilityFromRoot');
 
-	const USER_ID_LIST = Object.entries(get_ignored_users_list())
+	const iu_list = await get_ignored_users_list();
+
+	const USER_ID_LIST = Object.entries(iu_list)
 		.map(a => parseInt(a[0]));
 
 	const authors = document.querySelectorAll<HTMLAnchorElement>('.cajasnews a[href*="/foro/member"]');
@@ -327,11 +311,12 @@ function setThreadVisibilityFromRoot(show = false) {
 	});
 }
 
-function setThreadVisibilityFromForumdisplay(show = false) {
+async function setThreadVisibilityFromForumdisplay(show = false) {
 
 	BetterIgnoreUser.debug.log('setThreadVisibilityFromForumdisplay');
 
-	const USER_ID_LIST = new Set(Object.keys(get_ignored_users_list()));
+	const iu_list = await get_ignored_users_list();
+	const USER_ID_LIST = new Set(Object.keys(iu_list));
 
 	const authors = document.querySelectorAll('[id*=threadbits_forum] span[onclick]');
 
@@ -353,7 +338,7 @@ function setThreadVisibilityFromForumdisplay(show = false) {
 }
 
 // refactorize this
-function setPostVisibility(show = false, hide_ignored_posts = false) {
+async function setPostVisibility(show = false, hide_ignored_posts = false) {
 
 	BetterIgnoreUser.debug.log('setPostVisibility');
 
@@ -369,7 +354,7 @@ function setPostVisibility(show = false, hide_ignored_posts = false) {
 		'div#posts > ul' :
 		'#posts > div[align="center"]';
 
-	const iu_list = get_ignored_users_list();
+	const iu_list = await get_ignored_users_list();
 
 	const USER_ID_SET = new Set(Object.keys(iu_list));
 	const USERNAME_SET = new Set(Object.values<string>(iu_list));
@@ -423,6 +408,12 @@ function setPostVisibility(show = false, hide_ignored_posts = false) {
 	});
 }
 
+function is_adding_new_user() {
+	return PATH == FC.Urls.profile.pathname &&
+		URL_SEARCH_PARAMS.get('do') === 'addlist' &&
+		URL_SEARCH_PARAMS.get('userlist') === 'ignore';
+}
+
 BetterIgnoreUser.addEventListener('load', function () {
 
 	const storage_key_missing = !(
@@ -435,7 +426,7 @@ BetterIgnoreUser.addEventListener('load', function () {
 		BetterIgnoreUser.storage.set('update-needed', true);
 	};
 
-	if (PATH === FC.Urls.ignoreList.pathname && URL_SEARCH === FC.Urls.ignoreList.search) {
+	if (PATH === FC.Urls.ignoreList.pathname && URL_SEARCH === FC.Urls.ignoreList.search && is_adding_new_user()) {
 		BetterIgnoreUser.storage.set('update-needed', true);
 		BetterIgnoreUser.debug.log('Hitted ignored list url, update on next module load!!');
 
