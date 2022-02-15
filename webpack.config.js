@@ -1,8 +1,11 @@
+const FCPlugin = require('./webpack.plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const path = require('path');
 
+const fcplugin = new FCPlugin();
+
 module.exports = {
-	watch: true,
+	watch: false,
 	entry: './out/src/index.js',
 	target: 'web',
 	output: {
@@ -18,6 +21,7 @@ module.exports = {
 		minimize: true,
 		minimizer: [
 			new TerserPlugin({
+				minify: TerserPlugin.esbuildMinify,
 				extractComments: false,
 				terserOptions: {
 					compress: {
@@ -28,8 +32,42 @@ module.exports = {
 						arrows: true,
 					},
 
+					// mangle: {
+					// 	keep_classnames: true,
+					// 	properties: {
+					// 		reserved: ['fcpremium', 'Core'],
+					// 		builtins: true,
+					// 	}
+					// },
+
 					output: {
 						ecma: 2017,
+						comments: false
+					}
+				}
+			}),
+			new TerserPlugin({
+				minify: TerserPlugin.esbuildMinify,
+				extractComments: false,
+				terserOptions: {
+					compress: {
+						ecma: 2020,
+						negate_iife: false,
+						unsafe: true,
+						unsafe_arrows: true,
+						arrows: true,
+					},
+
+					// mangle: {
+					// 	keep_classnames: true,
+					// 	properties: {
+					// 		reserved: ['fcpremium', 'Core'],
+					// 		builtins: true,
+					// 	}
+					// },
+
+					output: {
+						ecma: 2020,
 						comments: false
 					}
 				}
@@ -37,19 +75,7 @@ module.exports = {
 		]
 	},
 
-	externals: [{
-			'fc-premium-core': 'fcpremium',
-		},
-
-		function (context, request, callback) {
-			const exp = /^@fc-lib\/(.*)$/.exec(request);
-
-			if (exp !== null && exp[1].length !== 0)
-				return callback(null, `fcpremium.Core.libraries.import('${exp[1]}')`);
-
-			callback();
-		}
-	],
+	plugins: [fcplugin],
 
 	module: {
 		rules: [{
@@ -57,7 +83,7 @@ module.exports = {
 			use: [{
 				loader: 'raw-loader',
 			}]
-		}]
+		}, ]
 	},
 
 	resolve: {

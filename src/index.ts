@@ -5,7 +5,11 @@ import { parse_ignored_users_html, safe_html, element_exists } from './tools'
 import ModuleInfo from "@assets/info.json";
 import ModuleConfig from "@assets/config.json";
 import ModuleStyles from '@assets/main.css'
+import pipo from '@fc-lib/pipo'
+import nepe from '@fc-lib/ytuputamadre'
 
+pipo()
+nepe()
 const BetterIgnoreUser = new Core.Module(ModuleInfo);
 
 const PATH = location.pathname;
